@@ -362,7 +362,7 @@ export function createProjectionNode<I>({
         /**
          * Lifecycles
          */
-        mount(instance: I, isLayoutDirty = this.root.hasTreeAnimated) {
+        mount(instance: I, isLayoutDirty: boolean = this.root.hasTreeAnimated) {
             if (this.instance) return
 
             this.isSVG = isSVGElement(instance)
@@ -559,6 +559,7 @@ export function createProjectionNode<I>({
                 this.options.onExitComplete && this.options.onExitComplete()
                 return
             }
+
             !this.root.isUpdating && this.root.startUpdate()
             if (this.isLayoutDirty) return
 
@@ -597,14 +598,15 @@ export function createProjectionNode<I>({
             // When doing an instant transition, we skip the layout update,
             // but should still clean up the measurements so that the next
             // snapshot could be taken correctly.
-            if (updateWasBlocked) {
-                this.unblockUpdate()
-                this.clearAllSnapshots()
+            if (!this.isUpdating || updateWasBlocked) {
+                if (updateWasBlocked) {
+                    this.unblockUpdate()
+                    this.clearAllSnapshots()
+                }
+
                 this.nodes!.forEach(clearMeasurements)
                 return
             }
-
-            if (!this.isUpdating) return
 
             this.isUpdating = false
 
@@ -731,7 +733,6 @@ export function createProjectionNode<I>({
 
             const prevLayout = this.layout
             this.layout = this.measure(false)
-
             this.layoutCorrected = createBox()
             this.isLayoutDirty = false
             this.projectionDelta = undefined
@@ -1827,6 +1828,7 @@ function updateLayout(node: IProjectionNode) {
 }
 
 function notifyLayoutUpdate(node: IProjectionNode) {
+    node.isLayoutDirty = false
     const snapshot = node.resumeFrom?.snapshot || node.snapshot
 
     if (
